@@ -7,6 +7,15 @@ var bodyParser = require('body-parser');
 var request = require('request');
 var routes = require('./routes/index');
 var users = require('./routes/users');
+var nodemailer = require('nodemailer');
+
+var transporter = nodemailer.createTransport({
+    service: 'Gmail',
+    auth: {
+        user: 'fuzzylizardsleepylizard@gmail.com',
+        pass: ''
+    }
+});
 
 var moment = require('moment');
 
@@ -206,6 +215,7 @@ app.use(function(err, req, res, next) {
 //lets get our timer going....
 var fs = require('fs');
 var schedule = require('node-schedule');
+var emailLimit = 0;
 
 console.log("initializing reoccurance")
 var rule = new schedule.RecurrenceRule();
@@ -214,21 +224,72 @@ rule.second = [0];
 var j = schedule.scheduleJob(rule, function(){
     request('http://192.168.1.20:3000/api/conditions', function (error, response, body) {   
         try{   
-        var conditions = JSON.parse(body);
-        var obj = [
-                    {
-                      time: moment().format('MM/DD/YYYY h:mm:ss a'),
-                      temperature: conditions.temperature, 
-                      humidity: conditions.humidity
-                    }
-                  ];
+          var conditions = JSON.parse(body);
+          var obj = [
+                      {
+                        time: moment().format('MM/DD/YYYY h:mm:ss a'),
+                        temperature: conditions.temperature, 
+                        humidity: conditions.humidity
+                      }
+                    ];
+
+            if(emailLimit == 0){
+              checkForEvents(obj);
+            }
+            emailLimit++;
+            if(emailLimit == 15){
+              emailLimit = 0;
+            }
         fs.appendFileSync('data.txt', JSON.stringify(obj).replace('[','').replace(']',''));
        }catch(e){
         console.log("Schedule: ERROR: " + e);
        }
+
+       
     });
 });
 
+var checkForEvents = function(obj){
+  console.log("checking for emails ");
+
+    var mailTemperatureMax = {
+      from: 'fuzzylizardsleepylizard@gmail.com', // sender address
+      to: 'grin.van@gmail.com', // list of receivers
+      subject: '[LizardMonitor] Problem Detected', // Subject line
+      text: 'The lizard temperature has been  ' + obj[0].temperature + "C since " + obj[0].time + ". Please go do something about it.", // plaintext body
+    };
+
+    var mailHumidityMax = {
+      from: 'fuzzylizardsleepylizard@gmail.com', // sender address
+      to: 'grin.van@gmail.com', // list of receivers
+      subject: '[LizardMonitor] Problem Detected', // Subject line
+      text: 'The lizard humidity has been  ' + obj[0].humidity + "% since " + obj[0].time + ". Please go do something about it.", // plaintext body
+
+    };
+    console.log("temp: " + obj[0].temperature);
+    if(Math.round(obj[0].temperature) > 30){
+      console.log("sending email for temp");
+        transporter.sendMail(mailTemperatureMax, function(error, info){
+            if(error){
+                console.log(error);
+            }else{
+                console.log('Message sent: ' + info.response);
+            }
+        });
+
+    }
+    console.log("humid: " + (obj[0].humid));
+    if(Math.round(obj[0].humidity) < 40){
+      console.log("sending email for humid");
+         transporter.sendMail(mailHumidityMax, function(error, info){
+            if(error){
+                console.log(error);
+            }else{
+                console.log('Message sent: ' + info.response);
+            }
+        });
+    }
+}
 
 
 
