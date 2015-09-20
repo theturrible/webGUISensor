@@ -91,6 +91,83 @@ router.get('/hist/:num', function(req,res){
 
 });
 
+router.get('/stats/:num', function(req,res){
+    var file = fs.readFileSync("data.txt", 'utf8');
+    file = file.replace(new RegExp("}{",'g'),'},{');
+    file = "[" + file + "]";
+    try{
+      file = JSON.parse(file);
+    }catch(e){
+      console.log("History: ERROR: " + e);
+      file = [];
+    }
+    
+    if(req.params.num && file.length > req.params.num){
+      file = file.slice(file.length - req.params.num, file.length);
+    }
+
+
+    //we now have an array of values in the given time interval.
+    //lets do some math
+
+    var out = getStats(file);
+
+    res.json(out);
+
+});
+
+
+function getStats(data){
+  var TEMP_MIN = data[0].temperature;
+  var TEMP_MAX = data[0].temperature;;
+  var HUMIDITY_MAX = data[0].humidity;
+  var HUMIDITY_MIN = data[0].humidity;
+  var HUMIDITY_AVG = 0;
+  var TEMPERATURE_AVG = 0;
+  var temps = 0;
+  var humidity = 0;
+
+  for(var i in data){
+    if(HUMIDITY_MAX < data[i].humidity){
+      HUMIDITY_MAX = data[i].humidity;
+    }
+    if(HUMIDITY_MIN > data[i].humidity){
+      HUMIDITY_MIN = data[i].humidity;
+    }
+    if(TEMP_MAX < data[i].temperature){
+      TEMP_MAX = data[i].temperature;
+    }
+    if(TEMP_MIN > data[i].temperature){
+      TEMP_MIN = data[i].temperature;
+    }
+
+    //get avg.
+    temps++;
+    humidity++;
+    HUMIDITY_AVG += +data[i].humidity;
+    TEMPERATURE_AVG += +data[i].temperature;
+
+  }
+  //console.log("TEMP_AVG" + TEMPERATURE_AVG + ", HUMIDITY_AVG: " + HUMIDITY_AVG);
+  HUMIDITY_AVG = HUMIDITY_AVG / humidity;
+  TEMPERATURE_AVG = TEMPERATURE_AVG / temps;
+  //console.log("TEMP_AVG" + TEMPERATURE_AVG + ", HUMIDITY_AVG: " + HUMIDITY_AVG);
+
+  return {
+            temp_max: TEMP_MAX, 
+            temp_min: TEMP_MIN, 
+            humid_min: HUMIDITY_MIN,
+            humid_max: HUMIDITY_MAX, 
+            delta_humid: (HUMIDITY_MAX - HUMIDITY_MIN), 
+            delta_temp: (TEMP_MAX - TEMP_MIN), 
+            humidity_avg: HUMIDITY_AVG, 
+            temperature_avg: TEMPERATURE_AVG
+          };
+
+}
+
+
+
 app.use('/api', router);
 app.use('/', routes);
 app.use('/users', users);

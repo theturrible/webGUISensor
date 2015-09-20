@@ -1,5 +1,7 @@
 	window.onload = function () {
+		//shide the update div
 
+		$('#lastUpdated').hide();
 		// dataPoints
 		var dataPoints1 = [];
 		var dataPoints2 = [];
@@ -94,6 +96,9 @@
 		 			chart.options.data[1].legendText = " Temperature: " + Math.round(data.temperature) + "F"; 
 
 		 			chart.render();
+					$('#lastUpdated').empty();
+ 					$('#lastUpdated').append("Last updated: " + moment().format('MMMM Do YYYY, h:mm:ss a'));
+ 					$('#lastUpdated').show();
 
 		 		});
  
@@ -122,15 +127,32 @@
 		 			// updating legend text with  updated with y Value 
 		 			chart.options.data[0].legendText = " Humidity: " + Math.round(data[i].humidity) + "%";
 		 			chart.options.data[1].legendText = " Temperature: " + Math.round(data[i].temperature) + "F"; 
- 					
  					}
 		 			chart.render();
 
 		 		});
  		};
+
+
+		var getStats = function(count){
+			$.get(
+			    "/api/stats/"+count,
+		    	function(data) {
+		    		$('#avgTemp').append(Math.round(data.temperature_avg)+ "C");
+		    		$('#avgHumid').append(Math.round(data.humidity_avg));
+		    		$('#deltaTemp').append(Math.round(data.delta_temp)+ "C");
+		    		$('#deltaHumid').append(Math.round(data.delta_humid));
+		    		$('#maxTemperature').append(data.temp_max + "C");
+		    		$('#maxHumidity').append(data.humid_max);
+		    		$('#minTemp').append(data.temp_min+ "C");
+		    		$('#minHumid').append(data.humid_min);
+		    	}
+		    );
+ 		};
  
  		// generates first set of dataPoints 
- 		updateChartFromHistory(20);
+ 		updateChartFromHistory(1440);
+ 		getStats(1440);
  		//updateChartFromHistory(100);	
  		 
  		// update chart after specified interval 
